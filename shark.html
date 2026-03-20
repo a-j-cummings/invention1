@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Shark</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #040d1a;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .back {
+      position: fixed;
+      top: 1.25rem;
+      left: 1.25rem;
+      color: rgba(255,255,255,0.3);
+      font-family: ui-monospace, monospace;
+      font-size: 0.75rem;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .back:hover { color: rgba(255,255,255,0.7); }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back">← back</a>
+  <canvas id="c"></canvas>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+
+    let W, H;
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Shark state
+    const shark = {
+      x: 0, y: 0,       // set after first resize
+      tx: null, ty: null, // target
+      speed: 3,
+      angle: 0,           // current facing angle
+    };
+
+    // Hint state
+    let hintAlpha = 1;
+    let hintFaded = false;
+
+    // Ripples
+    const ripples = [];
+
+    function init() {
+      shark.x = W / 2;
+      shark.y = H / 2;
+      shark.tx = null;
+      shark.ty = null;
+    }
+    init();
+    window.addEventListener('resize', () => { /* don't re-init, just let shark stay */ });
+
+    // Input
+    function onTap(cx, cy) {
+      shark.tx = cx;
+      shark.ty = cy;
+      ripples.push({ x: cx, y: cy, r: 0, alpha: 1 });
+      hintFaded = true;
+    }
+
+    canvas.addEventListener('click', e => onTap(e.clientX, e.clientY));
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      const t = e.touches[0];
+      onTap(t.clientX, t.clientY);
+    }, { passive: false });
+
+    // Draw placeholder shark (triangle pointing right)
+    function drawShark(x, y, angle) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+
+      const L = 40; // half-length
+      const H2 = 16; // half-height
+
+      ctx.beginPath();
+      ctx.moveTo(L, 0);        // nose
+      ctx.lineTo(-L, -H2);     // top tail
+      ctx.lineTo(-L * 0.6, 0); // notch
+      ctx.lineTo(-L, H2);      // bottom tail
+      ctx.closePath();
+      ctx.fillStyle = '#b0bec5';
+      ctx.fill();
+
+      // Eye
+      ctx.beginPath();
+      ctx.arc(L * 0.4, -H2 * 0.25, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#000';
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawRipple(r) {
+      ctx.save();
+      ctx.strokeStyle = `rgba(100, 180, 255, ${r.alpha})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawHint() {
+      if (hintAlpha <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = hintAlpha;
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '14px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('tap anywhere', W / 2, H - 40);
+      ctx.restore();
+    }
+
+    let last = 0;
+    function frame(ts) {
+      const dt = Math.min(ts - last, 50); // cap delta
+      last = ts;
+
+      // Clear
+      ctx.clearRect(0, 0, W, H);
+
+      // Ocean background
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#040d1a');
+      grad.addColorStop(1, '#0a1f3a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Move shark toward target
+      if (shark.tx !== null) {
+        const dx = shark.tx - shark.x;
+        const dy = shark.ty - shark.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < shark.speed) {
+          shark.x = shark.tx;
+          shark.y = shark.ty;
+          shark.tx = null;
+          shark.ty = null;
+        } else {
+          const targetAngle = Math.atan2(dy, dx);
+          // Smooth angle interpolation
+          let da = targetAngle - shark.angle;
+          while (da > Math.PI) da -= 2 * Math.PI;
+          while (da < -Math.PI) da += 2 * Math.PI;
+          shark.angle += da * 0.12;
+
+          shark.x += Math.cos(shark.angle) * shark.speed;
+          shark.y += Math.sin(shark.angle) * shark.speed;
+        }
+      }
+
+      // Draw ripples
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        const r = ripples[i];
+        drawRipple(r);
+        r.r += 2;
+        r.alpha -= 0.025;
+        if (r.alpha <= 0) ripples.splice(i, 1);
+      }
+
+      // Draw shark
+      drawShark(shark.x, shark.y, shark.angle);
+
+      // Hint
+      if (!hintFaded) {
+        drawHint();
+      } else if (hintAlpha > 0) {
+        hintAlpha = Math.max(0, hintAlpha - 0.03);
+        drawHint();
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

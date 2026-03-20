@@ -112,6 +112,19 @@
       opacity: 1;
     }
 
+    .nav-link {
+      display: block;
+      margin-top: 1.5rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .nav-link:hover {
+      color: var(--accent);
+    }
+
     .theme-btn {
       position: fixed;
       top: 1.25rem;
@@ -157,9 +170,10 @@
     </div>
     <div class="meta">
       <span>https://my-nuc.tail29dc41.ts.net</span><br>
-      branch: experiment/hosted-website<br>
-      served by python3 http.server
+      branch: main<br>
+      served by caddy
     </div>
+    <a href="shark.html" class="nav-link">→ shark</a>
   </div>
   <script>
     function toggleTheme() {
