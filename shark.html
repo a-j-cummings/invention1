@@ -75,18 +75,24 @@
     window.addEventListener('resize', () => { /* don't re-init, just let shark stay */ });
 
     // Input
-    function onTap(cx, cy) {
+    function setTarget(cx, cy, ripple = false) {
       shark.tx = cx;
       shark.ty = cy;
-      ripples.push({ x: cx, y: cy, r: 0, alpha: 1 });
+      if (ripple) ripples.push({ x: cx, y: cy, r: 0, alpha: 1 });
       hintFaded = true;
     }
 
-    canvas.addEventListener('click', e => onTap(e.clientX, e.clientY));
+    canvas.addEventListener('click', e => setTarget(e.clientX, e.clientY, true));
+    canvas.addEventListener('mousemove', e => setTarget(e.clientX, e.clientY, false));
     canvas.addEventListener('touchstart', e => {
       e.preventDefault();
       const t = e.touches[0];
-      onTap(t.clientX, t.clientY);
+      setTarget(t.clientX, t.clientY, true);
+    }, { passive: false });
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      const t = e.touches[0];
+      setTarget(t.clientX, t.clientY, false);
     }, { passive: false });
 
     // Draw placeholder shark (triangle pointing right)
