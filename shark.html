@@ -78,7 +78,11 @@
     function setTarget(cx, cy, ripple = false) {
       shark.tx = cx;
       shark.ty = cy;
-      if (ripple) ripples.push({ x: cx, y: cy, r: 0, alpha: 1 });
+      if (ripple) {
+        for (let i = 0; i < 3; i++) {
+          ripples.push({ x: cx, y: cy, r: 0, alpha: 1, delay: i * 12 });
+        }
+      }
       hintFaded = true;
     }
 
@@ -185,9 +189,10 @@
       // Draw ripples
       for (let i = ripples.length - 1; i >= 0; i--) {
         const r = ripples[i];
+        if (r.delay > 0) { r.delay--; continue; }
         drawRipple(r);
         r.r += 2;
-        r.alpha -= 0.025;
+        r.alpha -= 0.02;
         if (r.alpha <= 0) ripples.splice(i, 1);
       }
 
