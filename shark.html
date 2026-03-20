@@ -35,7 +35,7 @@
     /* Food menu */
     #food-menu {
       position: fixed;
-      bottom: 1.5rem;
+      top: 1.25rem;
       right: 1.5rem;
       display: flex;
       flex-direction: column;
@@ -109,12 +109,12 @@
   <canvas id="c"></canvas>
 
   <div id="food-menu">
+    <button class="menu-toggle" id="menu-toggle" onclick="toggleMenu()">feed ▾</button>
     <div class="food-options" id="food-options">
       <button class="food-btn" id="btn-fish" onclick="selectFood('fish')">🐟 fish</button>
       <button class="food-btn" id="btn-plankton" onclick="selectFood('plankton')">🦐 plankton</button>
       <button class="food-btn" id="btn-none" onclick="selectFood(null)">✕ none</button>
     </div>
-    <button class="menu-toggle" id="menu-toggle" onclick="toggleMenu()">feed ▾</button>
   </div>
 
   <script>
@@ -138,8 +138,54 @@
       { src: 'shark4-sprite.png',   w: 250, h: 136, tilt:  10 * Math.PI / 180, flip: true  }, // whale shark
     ];
 
-    const FOOD_EMOJI = { fish: '🐟', plankton: '🦐' };
-    const FOOD_SIZE = 32; // font size for emoji drops
+    // SVG food icons loaded as Image objects — reliable on all platforms
+    const FOOD_SVGs = {
+      fish: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 32">
+        <!-- tail -->
+        <polygon points="48,4 48,28 34,16" fill="#e07c3a"/>
+        <!-- body -->
+        <ellipse cx="20" cy="16" rx="18" ry="11" fill="#f4a261"/>
+        <!-- belly -->
+        <ellipse cx="18" cy="18" rx="12" ry="6" fill="#fdd9b5"/>
+        <!-- eye -->
+        <circle cx="9" cy="13" r="3" fill="#fff"/>
+        <circle cx="9" cy="13" r="1.5" fill="#222"/>
+        <!-- fin -->
+        <polygon points="14,5 22,5 18,11" fill="#e07c3a"/>
+      </svg>`,
+
+      plankton: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 48">
+        <!-- body segments -->
+        <ellipse cx="20" cy="30" rx="9" ry="11" fill="#80c784"/>
+        <ellipse cx="20" cy="20" rx="7" ry="7" fill="#a5d6a7"/>
+        <ellipse cx="20" cy="12" rx="5" ry="5" fill="#c8e6c9"/>
+        <!-- antennae -->
+        <line x1="20" y1="8" x2="10" y2="1" stroke="#558b5e" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="20" y1="8" x2="30" y2="1" stroke="#558b5e" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- legs -->
+        <line x1="13" y1="28" x2="4"  y2="34" stroke="#558b5e" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="13" y1="32" x2="3"  y2="40" stroke="#558b5e" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="27" y1="28" x2="36" y2="34" stroke="#558b5e" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="27" y1="32" x2="37" y2="40" stroke="#558b5e" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- eye -->
+        <circle cx="17" cy="11" r="1.5" fill="#333"/>
+      </svg>`,
+    };
+
+    const FOOD_SIZE = { fish: { w: 48, h: 32 }, plankton: { w: 40, h: 48 } };
+
+    function makeFoodImage(svgStr) {
+      const img = new Image();
+      img.src = 'data:image/svg+xml,' + encodeURIComponent(svgStr);
+      const obj = { img, loaded: false };
+      img.onload = () => { obj.loaded = true; };
+      return obj;
+    }
+
+    const foodImgs = {
+      fish:     makeFoodImage(FOOD_SVGs.fish),
+      plankton: makeFoodImage(FOOD_SVGs.plankton),
+    };
 
     function loadSprite(def) {
       const img = new Image();
@@ -163,7 +209,7 @@
     // ── Food ─────────────────────────────────────────────────────────────────
 
     const foods = []; // { x, y, type, alpha }
-    const EAT_DIST = 40;
+    const EAT_DIST = 55;
 
     function dropFood(x, y) {
       foods.push({ x, y, type: selectedFood, alpha: 1 });
@@ -326,12 +372,12 @@
     }
 
     function drawFood(f) {
+      const fi = foodImgs[f.type];
+      if (!fi.loaded) return;
+      const sz = FOOD_SIZE[f.type];
       ctx.save();
       ctx.globalAlpha = f.alpha;
-      ctx.font = `${FOOD_SIZE}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(FOOD_EMOJI[f.type], f.x, f.y);
+      ctx.drawImage(fi.img, f.x - sz.w / 2, f.y - sz.h / 2, sz.w, sz.h);
       ctx.restore();
     }
 
