@@ -50,27 +50,30 @@
     resize();
     window.addEventListener('resize', resize);
 
-    // Sprite definitions: { src, tilt (rad), flip }
+    // Sprite definitions: { src, w, h, tilt (rad), flip }
+    // tilt: angle correction so sprite faces right at angle=0
+    // flip: mirror horizontally (for left-facing sprites)
     const SPRITE_DEFS = [
-      { src: 'shark-sprite.png',  tilt: 16 * Math.PI / 180, flip: true },
-      { src: 'shark2-sprite.png', tilt: 16 * Math.PI / 180, flip: true },
+      { src: 'shark-sprite.png',  w: 220, h: 120, tilt:  16 * Math.PI / 180, flip: true  },
+      { src: 'shark2-sprite.png', w: 220, h: 120, tilt:  16 * Math.PI / 180, flip: true  },
+      { src: 'shark3-sprite.png', w: 155, h: 155, tilt: -Math.PI / 2,        flip: false }, // manta, faces up
+      { src: 'shark4-sprite.png', w: 250, h: 136, tilt:  10 * Math.PI / 180, flip: true  }, // whale shark
     ];
-
-    const SHARK_W = 220;
-    const SHARK_H = Math.round(SHARK_W * (768 / 1408)); // ~120px
 
     // Load all sprite images
     const sprites = SPRITE_DEFS.map(def => {
       const img = new Image();
       img.src = def.src;
-      return { img, loaded: false, tilt: def.tilt, flip: def.flip };
+      return { img, loaded: false, ...def };
     });
     sprites.forEach(s => { s.img.onload = () => { s.loaded = true; }; });
 
-    // Sharks — staggered start positions
+    // Sharks — spread out at start
     const sharks = [
-      { x: 0, y: 0, tx: null, ty: null, angle: 0,          speed: 3, idleSpeed: 1.5, sprite: sprites[0] },
-      { x: 0, y: 0, tx: null, ty: null, angle: Math.PI / 2, speed: 3, idleSpeed: 1.5, sprite: sprites[1] },
+      { x: 0, y: 0, tx: null, ty: null, angle: 0,              speed: 3, idleSpeed: 1.5, sprite: sprites[0] },
+      { x: 0, y: 0, tx: null, ty: null, angle: Math.PI / 2,    speed: 3, idleSpeed: 1.5, sprite: sprites[1] },
+      { x: 0, y: 0, tx: null, ty: null, angle: Math.PI,        speed: 3, idleSpeed: 1.5, sprite: sprites[2] },
+      { x: 0, y: 0, tx: null, ty: null, angle: 3 * Math.PI / 2, speed: 3, idleSpeed: 1.5, sprite: sprites[3] },
     ];
 
     // Hint state
@@ -85,8 +88,10 @@
     const ripples = [];
 
     function init() {
-      sharks[0].x = W * 0.35; sharks[0].y = H / 2;
-      sharks[1].x = W * 0.65; sharks[1].y = H / 2;
+      sharks[0].x = W * 0.25; sharks[0].y = H * 0.35;
+      sharks[1].x = W * 0.75; sharks[1].y = H * 0.35;
+      sharks[2].x = W * 0.25; sharks[2].y = H * 0.65;
+      sharks[3].x = W * 0.75; sharks[3].y = H * 0.65;
       sharks.forEach(s => { s.tx = null; s.ty = null; });
     }
     init();
@@ -137,7 +142,7 @@
       ctx.translate(shark.x, shark.y);
       ctx.rotate(shark.angle - s.tilt);
       if (s.flip) ctx.scale(-1, 1);
-      ctx.drawImage(s.img, -SHARK_W / 2, -SHARK_H / 2, SHARK_W, SHARK_H);
+      ctx.drawImage(s.img, -s.w / 2, -s.h / 2, s.w, s.h);
       ctx.restore();
     }
 
