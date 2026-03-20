@@ -99,50 +99,27 @@
       setTarget(t.clientX, t.clientY, false);
     }, { passive: false });
 
-    // Top-down pixel art hammerhead shark (36×20, facing right, tail at left)
-    // o=transparent, g=body grey, k=dark grey (dorsal/edges), e=eye
-    const PX = 7;
-    const o = 0, g = 1, k = 2, e = 3;
-    const SPRITE = [
-    //  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35
-      [ o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, k, k, k, k, e, o], //  0 hammer upper tip + eye
-      [ o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, k, g, g, g, g, k, o], //  1
-      [ o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, k, g, g, g, g, g, k, o], //  2
-      [ o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, k, g, g, g, g, g, g, k, o], //  3
-      [ o, o, k, k, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, g, g, g, g, g, g, k, g, g, g, g, g, g, g, g, k, o], //  4 tail upper fin + pec fin
-      [ o, k, g, g, k, o, o, o, o, o, o, o, o, o, o, o, o, o, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, k, o], //  5
-      [ k, g, g, g, g, k, o, o, o, o, o, o, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, k, o], //  6
-      [ o, k, g, g, g, g, g, k, k, k, k, k, k, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, o, o], //  7 dorsal stripe starts
-      [ o, o, k, g, g, g, g, g, k, k, k, k, k, k, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, k, o, o], //  8
-      [ o, o, o, k, g, g, g, g, k, k, k, k, k, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, k, o, o, o], //  9
-      [ o, o, o, k, g, g, g, g, k, k, k, k, k, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, k, o, o, o], // 10
-      [ o, o, k, g, g, g, g, g, k, k, k, k, k, k, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, k, o, o], // 11
-      [ o, k, g, g, g, g, g, k, k, k, k, k, k, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, o, o], // 12 dorsal stripe ends
-      [ k, g, g, g, g, k, o, o, o, o, o, o, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, k, o], // 13
-      [ o, k, g, g, k, o, o, o, o, o, o, o, o, o, o, o, o, o, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, k, o], // 14
-      [ o, o, k, k, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, g, g, g, g, g, g, k, g, g, g, g, g, g, g, g, k, o], // 15 tail lower fin + pec fin end
-      [ o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, k, g, g, g, g, g, g, k, o], // 16
-      [ o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, k, g, g, g, g, g, k, o], // 17
-      [ o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, k, g, g, g, g, k, o], // 18
-      [ o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, o, k, k, k, k, e, o], // 19 hammer lower tip + eye
-    ];
-    const COLS = 36, ROWS = 20;
-    const PALETTE = [null, '#8a9696', '#3e4c50', '#0f0f0f'];
+    // Shark sprite (loaded from PNG)
+    const sharkImg = new Image();
+    let sharkLoaded = false;
+    sharkImg.onload = () => { sharkLoaded = true; };
+    sharkImg.src = 'shark-sprite.png';
+
+    // Display size — maintain aspect ratio of 1408×768 source
+    const SHARK_W = 220;
+    const SHARK_H = Math.round(SHARK_W * (768 / 1408)); // ~120px
+
+    // Sprite faces left and has a slight downward tilt on its body axis.
+    // We flip horizontally so it faces right by default, then correct the tilt.
+    const SPRITE_TILT = 16 * Math.PI / 180;
 
     function drawShark(x, y, angle) {
+      if (!sharkLoaded) return;
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(angle);
-      const ox = -(COLS * PX) / 2;
-      const oy = -(ROWS * PX) / 2;
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const idx = SPRITE[r][c];
-          if (idx === 0) continue;
-          ctx.fillStyle = PALETTE[idx];
-          ctx.fillRect(ox + c * PX, oy + r * PX, PX, PX);
-        }
-      }
+      ctx.rotate(angle - SPRITE_TILT);
+      ctx.scale(-1, 1); // sprite faces left → flip to face right
+      ctx.drawImage(sharkImg, -SHARK_W / 2, -SHARK_H / 2, SHARK_W, SHARK_H);
       ctx.restore();
     }
 
