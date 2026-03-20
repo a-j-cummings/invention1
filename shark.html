@@ -112,7 +112,7 @@
     <div class="food-options" id="food-options">
       <button class="food-btn" id="btn-fish" onclick="selectFood('fish')">🐟 fish</button>
       <button class="food-btn" id="btn-plankton" onclick="selectFood('plankton')">🦐 plankton</button>
-      <button class="food-btn" id="btn-none" onclick="selectFood(null)">✕ chase mode</button>
+      <button class="food-btn" id="btn-none" onclick="selectFood(null)">✕ none</button>
     </div>
     <button class="menu-toggle" id="menu-toggle" onclick="toggleMenu()">feed ▾</button>
   </div>
@@ -138,10 +138,8 @@
       { src: 'shark4-sprite.png',   w: 250, h: 136, tilt:  10 * Math.PI / 180, flip: true  }, // whale shark
     ];
 
-    const FOOD_SPRITE_DEFS = {
-      fish:     { src: 'food-fish.png',     w: 48, h: 48 },
-      plankton: { src: 'food-plankton.png', w: 48, h: 48 },
-    };
+    const FOOD_EMOJI = { fish: '🐟', plankton: '🦐' };
+    const FOOD_SIZE = 32; // font size for emoji drops
 
     function loadSprite(def) {
       const img = new Image();
@@ -152,10 +150,6 @@
     }
 
     const sprites = SPRITE_DEFS.map(loadSprite);
-    const foodSprites = {
-      fish:     loadSprite(FOOD_SPRITE_DEFS.fish),
-      plankton: loadSprite(FOOD_SPRITE_DEFS.plankton),
-    };
 
     // ── Creatures ─────────────────────────────────────────────────────────────
     // diet: which food types attract this creature
@@ -220,43 +214,31 @@
 
     function handleTap(x, y, ripple) {
       hintFaded = true;
-      if (selectedFood) {
-        dropFood(x, y);
-        if (ripple) {
-          for (let i = 0; i < 3; i++)
-            ripples.push({ x, y, r: 15 + i * 6, alpha: 1, delay: i * 18 });
-        }
-      } else {
-        lastInputTime = performance.now();
-        creatures.forEach(c => { c.tx = x; c.ty = y; c.foodTarget = null; });
-        if (ripple) {
-          for (let i = 0; i < 3; i++)
-            ripples.push({ x, y, r: 15 + i * 6, alpha: 1, delay: i * 18 });
-        }
+      dropFood(x, y);
+      if (ripple) {
+        for (let i = 0; i < 3; i++)
+          ripples.push({ x, y, r: 15 + i * 6, alpha: 1, delay: i * 18 });
       }
     }
 
     canvas.addEventListener('click', e => {
       if (menuOpen) { toggleMenu(); return; }
-      handleTap(e.clientX, e.clientY, true);
+      if (selectedFood) handleTap(e.clientX, e.clientY, true);
     });
     canvas.addEventListener('mousemove', e => {
-      if (selectedFood) return; // don't chase mouse in feed mode
-      lastInputTime = performance.now();
-      creatures.forEach(c => { c.tx = e.clientX; c.ty = e.clientY; c.foodTarget = null; });
+      // no chasing in any mode — food only
     });
     canvas.addEventListener('touchstart', e => {
       e.preventDefault();
       if (menuOpen) { toggleMenu(); return; }
-      const t = e.touches[0];
-      handleTap(t.clientX, t.clientY, true);
+      if (selectedFood) {
+        const t = e.touches[0];
+        handleTap(t.clientX, t.clientY, true);
+      }
     }, { passive: false });
     canvas.addEventListener('touchmove', e => {
       e.preventDefault();
-      if (selectedFood) return;
-      lastInputTime = performance.now();
-      const t = e.touches[0];
-      creatures.forEach(c => { c.tx = t.clientX; c.ty = t.clientY; c.foodTarget = null; });
+      // no drag-chasing
     }, { passive: false });
 
     // ── Ripples ───────────────────────────────────────────────────────────────
@@ -283,46 +265,42 @@
 
     // ── Movement ──────────────────────────────────────────────────────────────
 
-    function moveCreature(c, ts) {
-      const idle = ts - lastInputTime > IDLE_DELAY;
-
-      // Find nearest edible food
+    function moveCreature(c) {
+      // Lock onto nearest edible food
       const food = nearestFood(c);
       if (food) {
         c.foodTarget = food;
         c.tx = food.x;
         c.ty = food.y;
       } else if (c.foodTarget && !foods.includes(c.foodTarget)) {
-        // Food was eaten — clear and wander
         c.foodTarget = null;
         c.tx = null;
         c.ty = null;
       }
 
-      // Idle wander when no touch target and no food
-      if (c.tx === null && (idle || selectedFood)) {
+      // Always wander when no target
+      if (c.tx === null) {
         pickWanderTarget(c);
+        return;
       }
-
-      if (c.tx === null) return;
 
       const dx = c.tx - c.x;
       const dy = c.ty - c.y;
       const dist = Math.sqrt(dx*dx + dy*dy);
-      const spd = (c.foodTarget || !idle) ? c.speed : c.idleSpeed;
+      const spd = c.foodTarget ? c.speed : c.idleSpeed;
+
+      // Check eat distance mid-path
+      if (c.foodTarget && dist < EAT_DIST) {
+        const idx = foods.indexOf(c.foodTarget);
+        if (idx !== -1) foods.splice(idx, 1);
+        c.foodTarget = null;
+        c.tx = null; c.ty = null;
+        return;
+      }
 
       if (dist < c.idleSpeed) {
         c.x = c.tx; c.y = c.ty;
-
-        // Eat food if close enough
-        if (c.foodTarget && dist < EAT_DIST) {
-          const idx = foods.indexOf(c.foodTarget);
-          if (idx !== -1) foods.splice(idx, 1);
-          c.foodTarget = null;
-        }
-
         c.tx = null; c.ty = null;
-        if (idle || selectedFood) pickWanderTarget(c);
       } else {
         const targetAngle = Math.atan2(dy, dx);
         let da = targetAngle - c.angle;
@@ -331,17 +309,6 @@
         c.angle += da * 0.12;
         c.x += Math.cos(c.angle) * spd;
         c.y += Math.sin(c.angle) * spd;
-
-        // Eat when close enough mid-path
-        if (c.foodTarget) {
-          const fdx = c.foodTarget.x - c.x, fdy = c.foodTarget.y - c.y;
-          if (Math.sqrt(fdx*fdx + fdy*fdy) < EAT_DIST) {
-            const idx = foods.indexOf(c.foodTarget);
-            if (idx !== -1) foods.splice(idx, 1);
-            c.foodTarget = null;
-            c.tx = null; c.ty = null;
-          }
-        }
       }
     }
 
@@ -359,22 +326,13 @@
     }
 
     function drawFood(f) {
-      const s = foodSprites[f.type];
-      if (s && s.loaded) {
-        ctx.save();
-        ctx.globalAlpha = f.alpha;
-        ctx.drawImage(s.img, f.x - s.w / 2, f.y - s.h / 2, s.w, s.h);
-        ctx.restore();
-      } else {
-        // Placeholder until sprites are loaded
-        ctx.save();
-        ctx.globalAlpha = f.alpha;
-        ctx.fillStyle = f.type === 'fish' ? '#f4a261' : '#80b918';
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, 8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
+      ctx.save();
+      ctx.globalAlpha = f.alpha;
+      ctx.font = `${FOOD_SIZE}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(FOOD_EMOJI[f.type], f.x, f.y);
+      ctx.restore();
     }
 
     function drawRipple(r) {
@@ -394,7 +352,7 @@
       ctx.fillStyle = 'rgba(255,255,255,0.4)';
       ctx.font = '14px ui-monospace, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('tap anywhere', W / 2, H - 40);
+      ctx.fillText('open feed menu to start', W / 2, H - 40);
       ctx.restore();
     }
 
@@ -413,7 +371,7 @@
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
 
-      creatures.forEach(c => moveCreature(c, ts));
+      creatures.forEach(c => moveCreature(c));
 
       foods.forEach(drawFood);
 
