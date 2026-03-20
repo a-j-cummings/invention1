@@ -80,7 +80,7 @@
       shark.ty = cy;
       if (ripple) {
         for (let i = 0; i < 3; i++) {
-          ripples.push({ x: cx, y: cy, r: 60 + i * 24, alpha: 1, delay: i * 12 });
+          ripples.push({ x: cx, y: cy, r: 30 + i * 12, alpha: 1, delay: i * 18 });
         }
       }
       hintFaded = true;
@@ -191,7 +191,7 @@
         const r = ripples[i];
         if (r.delay > 0) { r.delay--; continue; }
         drawRipple(r);
-        r.r += 2;
+        r.r += 1;
         r.alpha -= 0.02;
         if (r.alpha <= 0) ripples.splice(i, 1);
       }
