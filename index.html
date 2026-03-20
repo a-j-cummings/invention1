@@ -21,6 +21,16 @@
       --accent-dim: #1e2a42;
     }
 
+    :root.light {
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --border: #dde1ea;
+      --text-primary: #1a1d27;
+      --text-secondary: #6b7280;
+      --accent: #2563eb;
+      --accent-dim: #dbeafe;
+    }
+
     body {
       background-color: var(--bg);
       color: var(--text-primary);
@@ -101,9 +111,38 @@
       color: var(--accent);
       opacity: 1;
     }
+
+    .theme-btn {
+      position: fixed;
+      top: 1.25rem;
+      right: 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 8px;
+      padding: 0.45rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .theme-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--accent);
+    }
+
+    body {
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .card {
+      transition: background 0.2s, border-color 0.2s;
+    }
   </style>
 </head>
 <body>
+  <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀ light</button>
   <div class="card">
     <div class="label">Invention No. 1</div>
     <h1>Claude Code<br>Remote Control</h1>
@@ -122,5 +161,11 @@
       served by python3 http.server
     </div>
   </div>
+  <script>
+    function toggleTheme() {
+      const isLight = document.documentElement.classList.toggle('light');
+      document.getElementById('theme-btn').textContent = isLight ? '☽ dark' : '☀ light';
+    }
+  </script>
 </body>
 </html>
