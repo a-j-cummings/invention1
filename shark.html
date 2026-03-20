@@ -50,53 +50,69 @@
     resize();
     window.addEventListener('resize', resize);
 
-    // Shark state
-    const shark = {
-      x: 0, y: 0,       // set after first resize
-      tx: null, ty: null, // target
-      speed: 3,
-      idleSpeed: 1.5,
-      angle: 0,           // current facing angle
-    };
+    // Sprite definitions: { src, tilt (rad), flip }
+    const SPRITE_DEFS = [
+      { src: 'shark-sprite.png',  tilt: 16 * Math.PI / 180, flip: true },
+      { src: 'shark2-sprite.png', tilt: 16 * Math.PI / 180, flip: true },
+    ];
+
+    const SHARK_W = 220;
+    const SHARK_H = Math.round(SHARK_W * (768 / 1408)); // ~120px
+
+    // Load all sprite images
+    const sprites = SPRITE_DEFS.map(def => {
+      const img = new Image();
+      img.src = def.src;
+      return { img, loaded: false, tilt: def.tilt, flip: def.flip };
+    });
+    sprites.forEach(s => { s.img.onload = () => { s.loaded = true; }; });
+
+    // Sharks — staggered start positions
+    const sharks = [
+      { x: 0, y: 0, tx: null, ty: null, angle: 0,          speed: 3, idleSpeed: 1.5, sprite: sprites[0] },
+      { x: 0, y: 0, tx: null, ty: null, angle: Math.PI / 2, speed: 3, idleSpeed: 1.5, sprite: sprites[1] },
+    ];
 
     // Hint state
     let hintAlpha = 1;
     let hintFaded = false;
 
-    // Idle wandering
+    // Input state
     let lastInputTime = 0;
-    const IDLE_DELAY = 2000; // ms before wandering starts
+    let touchTarget = null; // { x, y } when user is actively touching
+    const IDLE_DELAY = 2000;
 
-    function pickWanderTarget() {
+    const ripples = [];
+
+    function init() {
+      sharks[0].x = W * 0.35; sharks[0].y = H / 2;
+      sharks[1].x = W * 0.65; sharks[1].y = H / 2;
+      sharks.forEach(s => { s.tx = null; s.ty = null; });
+    }
+    init();
+    window.addEventListener('resize', () => {});
+
+    function pickWanderTarget(shark) {
       const margin = 0.15;
       const mx = W * margin, my = H * margin;
       shark.tx = mx + Math.random() * (W - mx * 2);
       shark.ty = my + Math.random() * (H - my * 2);
     }
 
-    // Ripples
-    const ripples = [];
-
-    function init() {
-      shark.x = W / 2;
-      shark.y = H / 2;
-      shark.tx = null;
-      shark.ty = null;
-    }
-    init();
-    window.addEventListener('resize', () => { /* don't re-init, just let shark stay */ });
-
-    // Input
     function setTarget(cx, cy, ripple = false) {
       lastInputTime = performance.now();
-      shark.tx = cx;
-      shark.ty = cy;
+      touchTarget = { x: cx, y: cy };
+      sharks.forEach(s => { s.tx = cx; s.ty = cy; });
       if (ripple) {
         for (let i = 0; i < 3; i++) {
           ripples.push({ x: cx, y: cy, r: 15 + i * 6, alpha: 1, delay: i * 18 });
         }
       }
       hintFaded = true;
+    }
+
+    function clearTouch() {
+      touchTarget = null;
     }
 
     canvas.addEventListener('click', e => setTarget(e.clientX, e.clientY, true));
@@ -111,29 +127,47 @@
       const t = e.touches[0];
       setTarget(t.clientX, t.clientY, false);
     }, { passive: false });
+    canvas.addEventListener('touchend', clearTouch, { passive: true });
+    canvas.addEventListener('touchcancel', clearTouch, { passive: true });
 
-    // Shark sprite (loaded from PNG)
-    const sharkImg = new Image();
-    let sharkLoaded = false;
-    sharkImg.onload = () => { sharkLoaded = true; };
-    sharkImg.src = 'shark-sprite.png';
-
-    // Display size — maintain aspect ratio of 1408×768 source
-    const SHARK_W = 220;
-    const SHARK_H = Math.round(SHARK_W * (768 / 1408)); // ~120px
-
-    // Sprite faces left and has a slight downward tilt on its body axis.
-    // We flip horizontally so it faces right by default, then correct the tilt.
-    const SPRITE_TILT = 16 * Math.PI / 180;
-
-    function drawShark(x, y, angle) {
-      if (!sharkLoaded) return;
+    function drawShark(shark) {
+      const s = shark.sprite;
+      if (!s.loaded) return;
       ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle - SPRITE_TILT);
-      ctx.scale(-1, 1); // sprite faces left → flip to face right
-      ctx.drawImage(sharkImg, -SHARK_W / 2, -SHARK_H / 2, SHARK_W, SHARK_H);
+      ctx.translate(shark.x, shark.y);
+      ctx.rotate(shark.angle - s.tilt);
+      if (s.flip) ctx.scale(-1, 1);
+      ctx.drawImage(s.img, -SHARK_W / 2, -SHARK_H / 2, SHARK_W, SHARK_H);
       ctx.restore();
+    }
+
+    function moveShark(shark, ts) {
+      const idle = ts - lastInputTime > IDLE_DELAY;
+
+      if (shark.tx === null && idle) {
+        pickWanderTarget(shark);
+      }
+
+      if (shark.tx !== null) {
+        const dx = shark.tx - shark.x;
+        const dy = shark.ty - shark.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const spd = idle ? shark.idleSpeed : shark.speed;
+
+        if (dist < shark.idleSpeed) {
+          shark.x = shark.tx; shark.y = shark.ty;
+          shark.tx = null; shark.ty = null;
+          if (idle) pickWanderTarget(shark);
+        } else {
+          const targetAngle = Math.atan2(dy, dx);
+          let da = targetAngle - shark.angle;
+          while (da > Math.PI) da -= 2 * Math.PI;
+          while (da < -Math.PI) da += 2 * Math.PI;
+          shark.angle += da * 0.12;
+          shark.x += Math.cos(shark.angle) * spd;
+          shark.y += Math.sin(shark.angle) * spd;
+        }
+      }
     }
 
     function drawRipple(r) {
@@ -159,52 +193,19 @@
 
     let last = 0;
     function frame(ts) {
-      const dt = Math.min(ts - last, 50); // cap delta
+      const dt = Math.min(ts - last, 50);
       last = ts;
 
-      // Clear
       ctx.clearRect(0, 0, W, H);
 
-      // Ocean background
       const grad = ctx.createLinearGradient(0, 0, 0, H);
       grad.addColorStop(0, '#040d1a');
       grad.addColorStop(1, '#0a1f3a');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
 
-      // Idle wandering — kick off if no user input and no target
-      if (shark.tx === null && ts - lastInputTime > IDLE_DELAY) {
-        pickWanderTarget();
-      }
+      sharks.forEach(s => moveShark(s, ts));
 
-      // Move shark toward target
-      if (shark.tx !== null) {
-        const dx = shark.tx - shark.x;
-        const dy = shark.ty - shark.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist < shark.idleSpeed) {
-          shark.x = shark.tx;
-          shark.y = shark.ty;
-          shark.tx = null;
-          shark.ty = null;
-          // If idle, immediately queue next wander point
-          if (ts - lastInputTime > IDLE_DELAY) pickWanderTarget();
-        } else {
-          const targetAngle = Math.atan2(dy, dx);
-          // Smooth angle interpolation
-          let da = targetAngle - shark.angle;
-          while (da > Math.PI) da -= 2 * Math.PI;
-          while (da < -Math.PI) da += 2 * Math.PI;
-          shark.angle += da * 0.12;
-
-          const spd = (ts - lastInputTime > IDLE_DELAY) ? shark.idleSpeed : shark.speed;
-          shark.x += Math.cos(shark.angle) * spd;
-          shark.y += Math.sin(shark.angle) * spd;
-        }
-      }
-
-      // Draw ripples
       for (let i = ripples.length - 1; i >= 0; i--) {
         const r = ripples[i];
         if (r.delay > 0) { r.delay--; continue; }
@@ -214,10 +215,8 @@
         if (r.alpha <= 0) ripples.splice(i, 1);
       }
 
-      // Draw shark
-      drawShark(shark.x, shark.y, shark.angle);
+      sharks.forEach(drawShark);
 
-      // Hint
       if (!hintFaded) {
         drawHint();
       } else if (hintAlpha > 0) {
