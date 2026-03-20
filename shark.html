@@ -55,6 +55,7 @@
       x: 0, y: 0,       // set after first resize
       tx: null, ty: null, // target
       speed: 3,
+      idleSpeed: 1.5,
       angle: 0,           // current facing angle
     };
 
@@ -182,7 +183,7 @@
         const dy = shark.ty - shark.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < shark.speed) {
+        if (dist < shark.idleSpeed) {
           shark.x = shark.tx;
           shark.y = shark.ty;
           shark.tx = null;
@@ -197,8 +198,9 @@
           while (da < -Math.PI) da += 2 * Math.PI;
           shark.angle += da * 0.12;
 
-          shark.x += Math.cos(shark.angle) * shark.speed;
-          shark.y += Math.sin(shark.angle) * shark.speed;
+          const spd = (ts - lastInputTime > IDLE_DELAY) ? shark.idleSpeed : shark.speed;
+          shark.x += Math.cos(shark.angle) * spd;
+          shark.y += Math.sin(shark.angle) * spd;
         }
       }
 
