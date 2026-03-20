@@ -347,6 +347,31 @@
 
     // ── Movement ──────────────────────────────────────────────────────────────
 
+    // Shared steering — turn toward (tx,ty) and move at spd.
+    // Turn rate scales up when close to target to avoid orbiting.
+    function steer(entity, spd) {
+      const dx = entity.tx - entity.x, dy = entity.ty - entity.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < spd) {
+        entity.x = entity.tx; entity.y = entity.ty;
+        entity.tx = null; entity.ty = null;
+        return dist;
+      }
+      const targetAngle = Math.atan2(dy, dx);
+      let da = targetAngle - entity.angle;
+      while (da > Math.PI)  da -= 2 * Math.PI;
+      while (da < -Math.PI) da += 2 * Math.PI;
+      // Faster turning when the angle error is large (prevents orbiting)
+      const turnRate = 0.12 + 0.15 * (Math.abs(da) / Math.PI);
+      entity.angle += da * turnRate;
+      // Normalize angle to prevent float drift
+      while (entity.angle > Math.PI)  entity.angle -= 2 * Math.PI;
+      while (entity.angle < -Math.PI) entity.angle += 2 * Math.PI;
+      entity.x += Math.cos(entity.angle) * spd;
+      entity.y += Math.sin(entity.angle) * spd;
+      return dist;
+    }
+
     function moveSeal(seal) {
       const margin = 0.08;
       const mx = W * margin, my = H * margin;
@@ -363,19 +388,7 @@
         seal.ty = my + Math.random() * (H - my * 2);
       }
 
-      const tdx = seal.tx - seal.x, tdy = seal.ty - seal.y;
-      const tdist = Math.sqrt(tdx*tdx + tdy*tdy);
-      if (tdist < SEAL_SPEED) {
-        seal.tx = null; seal.ty = null;
-      } else {
-        const targetAngle = Math.atan2(tdy, tdx);
-        let da = targetAngle - seal.angle;
-        while (da > Math.PI) da -= 2 * Math.PI;
-        while (da < -Math.PI) da += 2 * Math.PI;
-        seal.angle += da * 0.1;
-        seal.x += Math.cos(seal.angle) * SEAL_SPEED;
-        seal.y += Math.sin(seal.angle) * SEAL_SPEED;
-      }
+      steer(seal, SEAL_SPEED);
 
       // Keep in bounds
       seal.x = Math.max(mx, Math.min(W - mx, seal.x));
@@ -398,18 +411,7 @@
           seals.splice(seals.indexOf(nearest), 1);
           c.tx = null; c.ty = null;
         }
-        if (c.tx !== null) {
-          // Move directly without the food/wander logic below
-          const dx = c.tx - c.x, dy = c.ty - c.y;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-          const targetAngle = Math.atan2(dy, dx);
-          let da = targetAngle - c.angle;
-          while (da > Math.PI) da -= 2 * Math.PI;
-          while (da < -Math.PI) da += 2 * Math.PI;
-          c.angle += da * 0.12;
-          c.x += Math.cos(c.angle) * c.speed;
-          c.y += Math.sin(c.angle) * c.speed;
-        }
+        if (c.tx !== null) steer(c, c.speed);
         return;
       }
 
@@ -431,32 +433,19 @@
         return;
       }
 
-      const dx = c.tx - c.x;
-      const dy = c.ty - c.y;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      const spd = c.foodTarget ? c.speed : c.idleSpeed;
-
-      // Check eat distance mid-path
-      if (c.foodTarget && dist < EAT_DIST) {
-        const idx = foods.indexOf(c.foodTarget);
-        if (idx !== -1) foods.splice(idx, 1);
-        c.foodTarget = null;
-        c.tx = null; c.ty = null;
-        return;
+      // Check eat distance
+      if (c.foodTarget) {
+        const dist = Math.hypot(c.tx - c.x, c.ty - c.y);
+        if (dist < EAT_DIST) {
+          const idx = foods.indexOf(c.foodTarget);
+          if (idx !== -1) foods.splice(idx, 1);
+          c.foodTarget = null;
+          c.tx = null; c.ty = null;
+          return;
+        }
       }
 
-      if (dist < c.idleSpeed) {
-        c.x = c.tx; c.y = c.ty;
-        c.tx = null; c.ty = null;
-      } else {
-        const targetAngle = Math.atan2(dy, dx);
-        let da = targetAngle - c.angle;
-        while (da > Math.PI) da -= 2 * Math.PI;
-        while (da < -Math.PI) da += 2 * Math.PI;
-        c.angle += da * 0.12;
-        c.x += Math.cos(c.angle) * spd;
-        c.y += Math.sin(c.angle) * spd;
-      }
+      steer(c, c.foodTarget ? c.speed : c.idleSpeed);
     }
 
     // ── Drawing ───────────────────────────────────────────────────────────────
@@ -477,6 +466,7 @@
       ctx.save();
       ctx.translate(seal.x, seal.y);
       ctx.rotate(seal.angle);
+      ctx.scale(-1, 1); // SVG head is on left; flip so it faces direction of travel
       ctx.drawImage(sealImg.img, -SEAL_W / 2, -SEAL_H / 2, SEAL_W, SEAL_H);
       ctx.restore();
     }
