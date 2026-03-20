@@ -62,6 +62,17 @@
     let hintAlpha = 1;
     let hintFaded = false;
 
+    // Idle wandering
+    let lastInputTime = 0;
+    const IDLE_DELAY = 2000; // ms before wandering starts
+
+    function pickWanderTarget() {
+      const margin = 0.15;
+      const mx = W * margin, my = H * margin;
+      shark.tx = mx + Math.random() * (W - mx * 2);
+      shark.ty = my + Math.random() * (H - my * 2);
+    }
+
     // Ripples
     const ripples = [];
 
@@ -76,6 +87,7 @@
 
     // Input
     function setTarget(cx, cy, ripple = false) {
+      lastInputTime = performance.now();
       shark.tx = cx;
       shark.ty = cy;
       if (ripple) {
@@ -159,6 +171,11 @@
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
 
+      // Idle wandering — kick off if no user input and no target
+      if (shark.tx === null && ts - lastInputTime > IDLE_DELAY) {
+        pickWanderTarget();
+      }
+
       // Move shark toward target
       if (shark.tx !== null) {
         const dx = shark.tx - shark.x;
@@ -170,6 +187,8 @@
           shark.y = shark.ty;
           shark.tx = null;
           shark.ty = null;
+          // If idle, immediately queue next wander point
+          if (ts - lastInputTime > IDLE_DELAY) pickWanderTarget();
         } else {
           const targetAngle = Math.atan2(dy, dx);
           // Smooth angle interpolation
