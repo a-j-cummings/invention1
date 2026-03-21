@@ -28,8 +28,8 @@
 
     .back {
       position: fixed;
-      top: 1.25rem;
-      left: 1.25rem;
+      top: calc(1.25rem + env(safe-area-inset-top));
+      left: calc(1.25rem + env(safe-area-inset-left));
       color: rgba(255,255,255,0.3);
       font-family: ui-monospace, monospace;
       font-size: 0.75rem;
@@ -41,8 +41,8 @@
     /* Food menu */
     #food-menu {
       position: fixed;
-      top: 1.25rem;
-      right: 1.5rem;
+      top: calc(1.25rem + env(safe-area-inset-top));
+      right: calc(1.5rem + env(safe-area-inset-right));
       display: flex;
       flex-direction: column;
       align-items: flex-end;
@@ -130,8 +130,8 @@
 
     let W, H;
     function resize() {
-      W = canvas.width = window.innerWidth;
-      H = canvas.height = window.innerHeight;
+      W = canvas.width = canvas.clientWidth;
+      H = canvas.height = canvas.clientHeight;
     }
     resize();
     window.addEventListener('resize', resize);
