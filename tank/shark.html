@@ -2,8 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Shark</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>Shark Tank</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Shark Tank">
+  <meta name="theme-color" content="#040d1a">
+  <link rel="manifest" href="/tank/manifest.json">
+  <link rel="apple-touch-icon" href="/tank/icon-180.png">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -11,13 +17,13 @@
       background: #040d1a;
       overflow: hidden;
       width: 100vw;
-      height: 100vh;
+      height: 100dvh;
     }
 
     canvas {
       display: block;
       width: 100vw;
-      height: 100vh;
+      height: 100dvh;
     }
 
     .back {
@@ -585,6 +591,11 @@
     }
 
     requestAnimationFrame(frame);
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/tank/sw.js');
+    }
   </script>
 </body>
 </html>

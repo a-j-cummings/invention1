@@ -1,0 +1,25 @@
+{
+  "name": "Shark Tank",
+  "short_name": "Shark Tank",
+  "description": "Interactive pixel shark tank",
+  "start_url": "/tank/shark.html",
+  "scope": "/tank/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#040d1a",
+  "theme_color": "#040d1a",
+  "icons": [
+    {
+      "src": "/tank/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/tank/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
