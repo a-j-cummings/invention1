@@ -1,4 +1,4 @@
-const CACHE = 'shark-tank-v1';
+const CACHE = 'shark-tank-v2';
 const ASSETS = [
   '/tank/shark.html',
   '/tank/manifest.json',
